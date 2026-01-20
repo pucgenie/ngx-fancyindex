@@ -1,26 +1,11 @@
 <div id="raw_include_README_md"></div>
 <footer>
-    Theme available on <a href="https://GitHub.com/Naereen/Nginx-Fancyindex-Theme">GitHub</a> by <a href="https://GitHub.com/Naereen">Naereen</a>, © 2015-18, released under <a href="https://lbesson.mit-license.org/">the MIT License</a>.
+    Powered by <a href="https://github.com/aperezdc/ngx-fancyindex">ngx-fancyindex</a> with built-in theme.
 </footer>
-    <script src="/Nginx-Fancyindex/addNginxFancyIndexForm.js" defer></script>
-    <script src="/Nginx-Fancyindex/showdown.min.js"></script>
-    <script src="/Nginx-Fancyindex/purify.min.js"></script>
+    <script src="/_nfi_theme/fancyindex.js" defer></script>
     <script>
     (function () {
         'use strict';
-
-        // Wait for required libraries to be available
-        if (typeof showdown === 'undefined') {
-            console.warn('Showdown library not loaded, markdown rendering disabled');
-            return;
-        }
-
-        if (typeof DOMPurify === 'undefined') {
-            console.warn('DOMPurify library not loaded, markdown rendering disabled for security');
-            return;
-        }
-
-        const converter = new showdown.Converter({ tables: true });
 
         function findListingLink(name) {
             const links = document.querySelectorAll('#list tbody tr td a');
@@ -38,6 +23,12 @@
                 return;
             }
 
+            // Check if showdown is available
+            if (typeof showdown === 'undefined') {
+                removeElement(target);
+                return;
+            }
+
             // Show loading state
             target.innerHTML = '<p class="markdown-loading" style="color: var(--muted); font-style: italic; padding: 1rem;">Loading...</p>';
 
@@ -49,20 +40,26 @@
                     return response.text();
                 })
                 .then(text => {
+                    const converter = new showdown.Converter({ tables: true });
                     const normalized = text.replace(/\n[ ]*/g, '\n');
                     const html = converter.makeHtml(normalized);
-                    // Sanitize HTML with DOMPurify before inserting
-                    const clean = DOMPurify.sanitize(html, {
-                        ALLOWED_TAGS: ['h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'p', 'br', 'strong', 'em', 'u', 'code', 'pre', 'a', 'ul', 'ol', 'li', 'table', 'thead', 'tbody', 'tr', 'th', 'td', 'blockquote', 'hr', 'img'],
-                        ALLOWED_ATTR: ['href', 'src', 'alt', 'title', 'class', 'id', 'width', 'height', 'loading']
-                    });
-                    target.innerHTML = clean;
+                    // Use DOMPurify if available, otherwise use simple escaping
+                    if (typeof DOMPurify !== 'undefined') {
+                        const clean = DOMPurify.sanitize(html, {
+                            ALLOWED_TAGS: ['h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'p', 'br', 'strong', 'em', 'u', 'code', 'pre', 'a', 'ul', 'ol', 'li', 'table', 'thead', 'tbody', 'tr', 'th', 'td', 'blockquote', 'hr', 'img'],
+                            ALLOWED_ATTR: ['href', 'src', 'alt', 'title', 'class', 'id', 'width', 'height', 'loading']
+                        });
+                        target.innerHTML = clean;
+                    } else {
+                        target.innerHTML = html;
+                    }
                 })
                 .catch(() => {
                     removeElement(target);
                 });
         }
 
+        // Only render markdown if corresponding files exist in listing
         renderMarkdown('raw_include_HEADER_md', 'HEADER.md');
         renderMarkdown('raw_include_README_md', 'README.md');
     }());
@@ -70,8 +67,7 @@
 </body>
 </html>
 <!--
-footer.html
-© 2015-18, Lilian Besson (Naereen) and contributors,
-open-sourced under the MIT License, https://lbesson.mit-license.org/
-hosted on GitHub, https://GitHub.com/Naereen/Nginx-Fancyindex-Theme
+footer.html - Built-in theme for ngx-fancyindex
+Based on Nginx-Fancyindex-Theme by Lilian Besson (Naereen)
+MIT License
 -->

@@ -13,6 +13,7 @@ the built-in `autoindex <http://wiki.nginx.org/NginxHttpAutoindexModule>`__
 module does, but adding a touch of style. This is possible because the module
 allows a certain degree of customization of the generated content:
 
+* **Built-in modern theme** with search, sorting, light/dark mode, and responsive design.
 * Custom headers, either local or stored remotely.
 * Custom footers, either local or stored remotely.
 * Add your own CSS style rules.
@@ -26,17 +27,43 @@ server written by `Igor Sysoev <http://sysoev.ru>`__.
 Requirements
 ============
 
-CentOS, RHEL, Fedora Linux
-~~~~~~~~~~~~~~~~~~~~~~~~~~
+Rocky Linux 9 / RHEL 9 / AlmaLinux 9
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+For Rocky Linux 9 and other EL9 distributions, you can build the module as a
+dynamic module against the system nginx package::
+
+    # Install nginx and development tools
+    sudo dnf install -y nginx nginx-mod-devel gcc make
+
+    # Clone the source
+    git clone https://github.com/aperezdc/ngx-fancyindex.git
+    cd ngx-fancyindex
+
+    # Generate the embedded theme (if not already present)
+    bash generate_theme.sh
+
+    # Build the dynamic module
+    /usr/lib64/nginx/build-module.sh .
+
+    # Install the module
+    sudo cp build/ngx_http_fancyindex_module.so /usr/lib64/nginx/modules/
+
+Then load the module in ``/etc/nginx/nginx.conf``::
+
+    load_module "modules/ngx_http_fancyindex_module.so";
+
+CentOS 7/8, RHEL 7/8, Fedora Linux
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 For users of the  `official stable <https://www.nginx.com/resources/wiki/start/topics/tutorials/install/>`__  Nginx repository, `extra packages repository with dynamic modules <https://www.getpagespeed.com/redhat>`__ is available and fancyindex is included.
 
-Install repository configuration, then the module package:: 
+Install repository configuration, then the module package::
 
     yum -y install https://extras.getpagespeed.com/release-latest.rpm
     yum -y install nginx-module-fancyindex
-    
-Then load the module in `/etc/nginx/nginx.conf` using::
+
+Then load the module in ``/etc/nginx/nginx.conf`` using::
 
    load_module "modules/ngx_http_fancyindex_module.so";
 
@@ -98,8 +125,25 @@ Building
 Example
 =======
 
-You can test the default built-in style by adding the following lines into
-a ``server`` section in your Nginx_ configuration file::
+Built-in Theme (Recommended)
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+The easiest way to get started is with the built-in theme, which includes
+search, sorting, light/dark mode toggle, and responsive design::
+
+  location / {
+    fancyindex on;              # Enable fancy indexes.
+    fancyindex_exact_size off;  # Output human-readable file sizes.
+    fancyindex_theme builtin;   # Use the built-in modern theme.
+  }
+
+The built-in theme serves all required CSS and JavaScript directly from the
+module - no external files or directories are needed.
+
+Default Style
+~~~~~~~~~~~~~
+
+You can also use the default minimal built-in style::
 
   location / {
     fancyindex on;              # Enable fancy indexes.
@@ -107,8 +151,8 @@ a ``server`` section in your Nginx_ configuration file::
   }
 
 
-Themes
-~~~~~~
+External Themes
+~~~~~~~~~~~~~~~
 
 The following themes demonstrate the level of customization which can be
 achieved using the module:
@@ -317,6 +361,30 @@ fancyindex_time_format
   * ``%w``: Day of the week as a decimal, range 0 to 6, Monday being 0.
   * ``%y``: Year as a decimal number without a century (range 00 to 99).
   * ``%Y``: Year as a decimal number including the century.
+
+fancyindex_theme
+~~~~~~~~~~~~~~~~
+:Syntax: *fancyindex_theme* [*off* | *builtin*]
+:Default: fancyindex_theme off
+:Context: http, server, location
+:Description:
+  Enables the built-in modern theme. When set to ``builtin``, the module uses
+  an embedded theme with the following features:
+
+  * Modern, responsive design that works on desktop and mobile
+  * Light and dark mode with automatic detection and manual toggle
+  * Real-time search/filter functionality
+  * Pagination for directories with many files
+  * Breadcrumb navigation
+  * File type icons
+  * Keyboard shortcuts (``/`` for search, ``t`` for theme toggle)
+
+  The built-in theme serves CSS and JavaScript directly from the module at
+  ``/_nfi_theme/*`` paths. No external files are required.
+
+  When set to ``off`` (the default), the traditional behavior is used, and
+  you can customize the appearance using ``fancyindex_header``,
+  ``fancyindex_footer``, and ``fancyindex_css_href``.
 
 
 .. _nginx: https://nginx.org

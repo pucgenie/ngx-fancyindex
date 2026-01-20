@@ -25,6 +25,7 @@
 #include <ngx_log.h>
 
 #include "template.h"
+#include "theme_builtin.h"
 
 #if defined(__GNUC__) && (__GNUC__ >= 3)
 # define ngx_force_inline __attribute__((__always_inline__))
@@ -146,6 +147,14 @@ typedef struct {
 } ngx_fancyindex_headerfooter_conf_t;
 
 /**
+ * Theme mode enumeration for fancyindex_theme directive.
+ */
+enum {
+    NGX_HTTP_FANCYINDEX_THEME_OFF,      /**< No built-in theme, use traditional config */
+    NGX_HTTP_FANCYINDEX_THEME_BUILTIN,  /**< Use built-in embedded theme */
+};
+
+/**
  * Configuration structure for the fancyindex module. The configuration
  * commands defined in the module do fill in the members of this structure.
  */
@@ -168,6 +177,8 @@ typedef struct {
 
     ngx_fancyindex_headerfooter_conf_t header;
     ngx_fancyindex_headerfooter_conf_t footer;
+
+    ngx_uint_t theme;          /**< Built-in theme mode (off/builtin). */
 } ngx_http_fancyindex_loc_conf_t;
 
 #define NGX_HTTP_FANCYINDEX_SORT_CRITERION_NAME       0
@@ -184,6 +195,12 @@ static ngx_conf_enum_t ngx_http_fancyindex_sort_criteria[] = {
     { ngx_string("name_desc"), NGX_HTTP_FANCYINDEX_SORT_CRITERION_NAME_DESC },
     { ngx_string("size_desc"), NGX_HTTP_FANCYINDEX_SORT_CRITERION_SIZE_DESC },
     { ngx_string("date_desc"), NGX_HTTP_FANCYINDEX_SORT_CRITERION_DATE_DESC },
+    { ngx_null_string, 0 }
+};
+
+static ngx_conf_enum_t ngx_http_fancyindex_theme_values[] = {
+    { ngx_string("off"), NGX_HTTP_FANCYINDEX_THEME_OFF },
+    { ngx_string("builtin"), NGX_HTTP_FANCYINDEX_THEME_BUILTIN },
     { ngx_null_string, 0 }
 };
 
@@ -486,6 +503,13 @@ static ngx_command_t  ngx_http_fancyindex_commands[] = {
       NGX_HTTP_LOC_CONF_OFFSET,
       offsetof(ngx_http_fancyindex_loc_conf_t, time_format),
       NULL },
+
+    { ngx_string("fancyindex_theme"),
+      NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_CONF_TAKE1,
+      ngx_conf_set_enum_slot,
+      NGX_HTTP_LOC_CONF_OFFSET,
+      offsetof(ngx_http_fancyindex_loc_conf_t, theme),
+      &ngx_http_fancyindex_theme_values },
 
     ngx_null_command
 };
@@ -1159,6 +1183,88 @@ make_content_buf(
 }
 
 
+/**
+ * Handler for serving embedded theme assets.
+ * Serves CSS and JavaScript files from the built-in theme at /_nfi_theme/*
+ */
+static ngx_int_t
+ngx_http_fancyindex_theme_asset_handler(ngx_http_request_t *r)
+{
+    ngx_buf_t                      *b;
+    ngx_chain_t                     out;
+    ngx_int_t                       rc;
+    const nfi_theme_asset_info_t   *asset;
+    ngx_str_t                       asset_path;
+    size_t                          prefix_len;
+
+    /* Only handle GET/HEAD requests */
+    if (!(r->method & (NGX_HTTP_GET|NGX_HTTP_HEAD))) {
+        return NGX_HTTP_NOT_ALLOWED;
+    }
+
+    /* Extract the path after the prefix */
+    prefix_len = NFI_THEME_PATH_PREFIX_LEN;
+    if (r->uri.len <= prefix_len) {
+        return NGX_HTTP_NOT_FOUND;
+    }
+
+    asset_path.data = r->uri.data + prefix_len;
+    asset_path.len = r->uri.len - prefix_len;
+
+    /* Look up the asset in our table */
+    for (asset = nfi_theme_assets; asset->path != NULL; asset++) {
+        if (asset_path.len == asset->path_len &&
+            ngx_strncmp(asset_path.data, asset->path, asset->path_len) == 0)
+        {
+            break;
+        }
+    }
+
+    if (asset->path == NULL) {
+        return NGX_HTTP_NOT_FOUND;
+    }
+
+    /* Set up the response */
+    r->headers_out.status = NGX_HTTP_OK;
+    r->headers_out.content_length_n = asset->data_len;
+    r->headers_out.content_type.len = asset->mime_len;
+    r->headers_out.content_type.data = (u_char *) asset->mime;
+    r->headers_out.content_type_lowcase = NULL;
+
+    /* Add cache control header for long-term caching */
+    {
+        ngx_table_elt_t *cc = ngx_list_push(&r->headers_out.headers);
+        if (cc == NULL) {
+            return NGX_HTTP_INTERNAL_SERVER_ERROR;
+        }
+        cc->hash = 1;
+        ngx_str_set(&cc->key, "Cache-Control");
+        ngx_str_set(&cc->value, "public, max-age=31536000, immutable");
+    }
+
+    rc = ngx_http_send_header(r);
+    if (rc == NGX_ERROR || rc > NGX_OK || r->header_only) {
+        return rc;
+    }
+
+    /* Create buffer pointing to the embedded data */
+    b = ngx_calloc_buf(r->pool);
+    if (b == NULL) {
+        return NGX_HTTP_INTERNAL_SERVER_ERROR;
+    }
+
+    b->pos = (u_char *) asset->data;
+    b->last = (u_char *) asset->data + asset->data_len;
+    b->memory = 1;
+    b->last_buf = 1;
+    b->last_in_chain = 1;
+
+    out.buf = b;
+    out.next = NULL;
+
+    return ngx_http_output_filter(r, &out);
+}
+
 
 static ngx_int_t
 ngx_http_fancyindex_handler(ngx_http_request_t *r)
@@ -1171,6 +1277,12 @@ ngx_http_fancyindex_handler(ngx_http_request_t *r)
     ngx_chain_t                     out[3] = {
         { NULL, NULL }, { NULL, NULL}, { NULL, NULL }};
 
+    /* Check if this is a request for theme assets */
+    if (r->uri.len >= NFI_THEME_PATH_PREFIX_LEN &&
+        ngx_strncmp(r->uri.data, NFI_THEME_PATH_PREFIX, NFI_THEME_PATH_PREFIX_LEN) == 0)
+    {
+        return ngx_http_fancyindex_theme_asset_handler(r);
+    }
 
     if (r->uri.data[r->uri.len - 1] != '/') {
         return NGX_DECLINED;
@@ -1208,6 +1320,35 @@ ngx_http_fancyindex_handler(ngx_http_request_t *r)
     rc = ngx_http_send_header(r);
     if (rc == NGX_ERROR || rc > NGX_OK || r->header_only)
         return rc;
+
+    /* Check if using built-in theme - this overrides header/footer settings */
+    if (alcf->theme == NGX_HTTP_FANCYINDEX_THEME_BUILTIN) {
+        /* Use embedded theme header */
+        out[1].next = out[0].next;
+        out[1].buf  = out[0].buf;
+        out[0].next = &out[1];
+
+        out[0].buf = ngx_calloc_buf(r->pool);
+        if (out[0].buf == NULL)
+            return NGX_ERROR;
+        out[0].buf->memory = 1;
+        out[0].buf->pos = (u_char *) nfi_theme_header_data;
+        out[0].buf->last = (u_char *) nfi_theme_header_data + nfi_theme_header_len;
+
+        /* Use embedded theme footer */
+        out[1].buf->last_in_chain = 0;
+        out[2].buf = ngx_calloc_buf(r->pool);
+        if (out[2].buf == NULL)
+            return NGX_ERROR;
+        out[2].buf->memory = 1;
+        out[2].buf->pos = (u_char *) nfi_theme_footer_data;
+        out[2].buf->last = (u_char *) nfi_theme_footer_data + nfi_theme_footer_len;
+        out[2].buf->last_in_chain = 1;
+        out[2].buf->last_buf = 1;
+
+        out[1].next = &out[2];
+        return ngx_http_output_filter(r, &out[0]);
+    }
 
     if (alcf->header.path.len > 0 && alcf->header.local.len == 0) {
         /* URI is configured, make Nginx take care of with a subrequest. */
@@ -1480,6 +1621,7 @@ ngx_http_fancyindex_create_loc_conf(ngx_conf_t *cf)
     conf->show_path      = NGX_CONF_UNSET;
     conf->hide_parent    = NGX_CONF_UNSET;
     conf->show_dot_files = NGX_CONF_UNSET;
+    conf->theme          = NGX_CONF_UNSET_UINT;
 
     return conf;
 }
@@ -1513,9 +1655,12 @@ ngx_http_fancyindex_merge_loc_conf(ngx_conf_t *cf, void *parent, void *child)
     ngx_conf_merge_ptr_value(conf->ignore, prev->ignore, NULL);
     ngx_conf_merge_value(conf->hide_symlinks, prev->hide_symlinks, 0);
     ngx_conf_merge_value(conf->hide_parent, prev->hide_parent, 0);
+    ngx_conf_merge_uint_value(conf->theme, prev->theme, NGX_HTTP_FANCYINDEX_THEME_OFF);
 
-    /* Just make sure we haven't disabled the show_path directive without providing a custom header */
-    if (conf->show_path == 0 && conf->header.path.len == 0)
+    /* Just make sure we haven't disabled the show_path directive without providing a custom header
+     * (but allow it when using the built-in theme) */
+    if (conf->show_path == 0 && conf->header.path.len == 0
+        && conf->theme != NGX_HTTP_FANCYINDEX_THEME_BUILTIN)
     {
         ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "FancyIndex : cannot set show_path to off without providing a custom header !");
         return NGX_CONF_ERROR;
