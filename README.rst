@@ -34,7 +34,7 @@ For Rocky Linux 9 and other EL9 distributions, you can build the module as a
 dynamic module against the system nginx package::
 
     # Install nginx and development tools
-    sudo dnf install -y nginx nginx-mod-devel gcc make
+    sudo dnf install -y nginx nginx-mod-devel gcc make pcre-devel zlib-devel
 
     # Clone the source
     git clone https://github.com/aperezdc/ngx-fancyindex.git
@@ -43,11 +43,17 @@ dynamic module against the system nginx package::
     # Generate the embedded theme (if not already present)
     bash generate_theme.sh
 
-    # Build the dynamic module
-    /usr/lib64/nginx/build-module.sh .
+    # Find nginx source directory (installed by nginx-mod-devel)
+    # Typically at /usr/src/nginx-<version>
+    NGINX_SRC=$(ls -d /usr/src/nginx-* 2>/dev/null | head -1)
+
+    # Configure and build the dynamic module
+    cd "$NGINX_SRC"
+    ./configure --with-compat --add-dynamic-module=/path/to/ngx-fancyindex
+    make modules
 
     # Install the module
-    sudo cp build/ngx_http_fancyindex_module.so /usr/lib64/nginx/modules/
+    sudo cp objs/ngx_http_fancyindex_module.so /usr/lib64/nginx/modules/
 
 Then load the module in ``/etc/nginx/nginx.conf``::
 

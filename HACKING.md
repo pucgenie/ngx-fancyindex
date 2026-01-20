@@ -61,20 +61,29 @@ filesystem configuration.
 
 ## Building on Rocky Linux 9 / EL9
 
-Rocky Linux 9 provides a convenient way to build dynamic nginx modules
-using the `nginx-mod-devel` package:
+Rocky Linux 9 provides the nginx source via `nginx-mod-devel` package, which
+allows building dynamic modules using nginx's configure script:
 
     # Install dependencies
-    sudo dnf install -y nginx nginx-mod-devel gcc make
+    sudo dnf install -y nginx nginx-mod-devel gcc make pcre-devel zlib-devel
 
-    # Generate the theme header
+    # Generate the theme header (from the ngx-fancyindex directory)
     bash generate_theme.sh
 
-    # Build the dynamic module
-    /usr/lib64/nginx/build-module.sh .
+    # Find the nginx source directory
+    NGINX_SRC=$(ls -d /usr/src/nginx-* 2>/dev/null | head -1)
+    # Example: /usr/src/nginx-1.20.1-24.el9
+
+    # Configure and build the dynamic module
+    cd "$NGINX_SRC"
+    ./configure --with-compat --add-dynamic-module=/path/to/ngx-fancyindex
+    make modules
 
     # Install the module
-    sudo cp build/ngx_http_fancyindex_module.so /usr/lib64/nginx/modules/
+    sudo cp objs/ngx_http_fancyindex_module.so /usr/lib64/nginx/modules/
 
     # Enable in nginx.conf
     load_module "modules/ngx_http_fancyindex_module.so";
+
+The `--with-compat` flag ensures the module is compatible with the system
+nginx binary without needing to match all original compile-time options.
