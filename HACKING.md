@@ -1,5 +1,12 @@
 # Fancy Index module Hacking HOW-TO
 
+- [Fancy Index module Hacking HOW-TO](#fancy-index-module-hacking-how-to)
+  - [How to modify the template](#how-to-modify-the-template)
+  - [Regenerating the C header](#regenerating-the-c-header)
+  - [How to modify the built-in theme](#how-to-modify-the-built-in-theme)
+    - [Theme asset paths](#theme-asset-paths)
+  - [Building on Rocky Linux 9 / EL9](#building-on-rocky-linux-9--el9)
+
 ## How to modify the template
 
 The template is in the `template.html` file. Note that comment markers are
@@ -12,13 +19,12 @@ marker will be flattened into a C string.
 If the identifier is `NONE` (capitalized) the text from that marker up to
 the next marker will be discarded.
 
-
 ## Regenerating the C header
 
 You will need Awk. I hope any decent implementation will do, but the GNU one
 is known to work flawlessly. Just do:
 
-    $ awk -f template.awk template.html > template.h
+    awk -f template.awk template.html > template.h
 
 If your copy of `awk` is not the GNU implementation, you will need to
 install it and use `gawk` instead in the command line above.
@@ -28,7 +34,6 @@ This includes macOS where the current built-in `awk` (currently version
 characters to be omitted from the output. `gawk` can be installed with a
 package manager such as [Homebrew](https://brew.sh) or
 [MacPorts](https://ports.macports.org/port/gawk).
-
 
 ## How to modify the built-in theme
 
@@ -42,9 +47,10 @@ The built-in theme files are located in the `theme/` directory:
 After modifying any of these files, you must regenerate the `theme_builtin.h`
 header which embeds these files as C byte arrays:
 
-    $ bash generate_theme.sh
+    bash generate_theme.sh
 
 The script will:
+
 1. Convert each theme file to a C byte array
 2. Generate the `theme_builtin.h` header file
 3. Report the sizes of embedded assets
@@ -52,12 +58,12 @@ The script will:
 ### Theme asset paths
 
 When using `fancyindex_theme builtin`, the module serves embedded assets at:
+
 - `/_nfi_theme/styles.css` - CSS stylesheet
 - `/_nfi_theme/fancyindex.js` - JavaScript functionality
 
 These paths are handled directly by the module and do not require any
 filesystem configuration.
-
 
 ## Building on Rocky Linux 9 / EL9
 
