@@ -127,7 +127,7 @@ typedef struct {
 static const nfi_theme_asset_info_t nfi_theme_assets[] = {
     {
         "/styles.css",
-        12,
+        11,
         nfi_theme_css_mime,
         sizeof(nfi_theme_css_mime) - 1,
         nfi_theme_css_data,

@@ -11,12 +11,7 @@
         const THEME_STORAGE_KEY = 'fancyindex-theme';
         const ITEMS_PER_PAGE = 100;
 
-        // Register Service Worker for offline support
-        if ('serviceWorker' in navigator) {
-                navigator.serviceWorker.register('/Nginx-Fancyindex/sw.js').catch((err) => {
-                        console.warn('Service worker registration failed:', err);
-                });
-        }
+        // Service Worker disabled for built-in theme (assets served from module)
 
         const form = document.createElement('form');
         const input = document.createElement('input');
@@ -27,6 +22,97 @@
         const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
         const table = document.querySelector('#list');
         const tbody = table?.querySelector('tbody');
+        const thead = table?.querySelector('thead');
+
+        // Sorting state
+        let currentSort = { column: 'name', order: 'asc' };
+
+        // Parse current sort from URL
+        function parseSortFromURL() {
+                const params = new URLSearchParams(window.location.search);
+                const c = params.get('C');
+                const o = params.get('O');
+
+                if (c) {
+                        switch (c) {
+                                case 'N': currentSort.column = 'name'; break;
+                                case 'S': currentSort.column = 'size'; break;
+                                case 'M': currentSort.column = 'date'; break;
+                        }
+                }
+                if (o) {
+                        currentSort.order = o === 'D' ? 'desc' : 'asc';
+                }
+        }
+
+        // Setup sortable column headers with arrow icons
+        function setupSortableHeaders() {
+                if (!thead) return;
+
+                const headerRow = thead.querySelector('tr');
+                if (!headerRow) return;
+
+                // Clear existing content and rebuild headers
+                const headers = [
+                        { key: 'name', label: 'File Name', param: 'N', colspan: 2 },
+                        { key: 'size', label: 'File Size', param: 'S' },
+                        { key: 'date', label: 'Date', param: 'M' }
+                ];
+
+                headerRow.innerHTML = '';
+
+                headers.forEach(header => {
+                        const th = document.createElement('th');
+                        if (header.colspan) th.colSpan = header.colspan;
+
+                        const btn = document.createElement('button');
+                        btn.type = 'button';
+                        btn.className = 'sort-header';
+                        btn.setAttribute('data-sort', header.key);
+
+                        const labelSpan = document.createElement('span');
+                        labelSpan.className = 'sort-label';
+                        labelSpan.textContent = header.label;
+
+                        const arrowSpan = document.createElement('span');
+                        arrowSpan.className = 'sort-arrow';
+                        arrowSpan.setAttribute('aria-hidden', 'true');
+
+                        // Set initial arrow state
+                        if (currentSort.column === header.key) {
+                                btn.classList.add('active');
+                                arrowSpan.textContent = currentSort.order === 'asc' ? ' ↑' : ' ↓';
+                                btn.setAttribute('aria-sort', currentSort.order === 'asc' ? 'ascending' : 'descending');
+                        } else {
+                                arrowSpan.textContent = '';
+                        }
+
+                        btn.appendChild(labelSpan);
+                        btn.appendChild(arrowSpan);
+
+                        btn.addEventListener('click', () => {
+                                // Toggle order if same column, otherwise default to ascending
+                                let newOrder;
+                                if (currentSort.column === header.key) {
+                                        newOrder = currentSort.order === 'asc' ? 'D' : 'A';
+                                } else {
+                                        newOrder = 'A';
+                                }
+
+                                // Navigate to sorted URL
+                                const url = new URL(window.location.href);
+                                url.searchParams.set('C', header.param);
+                                url.searchParams.set('O', newOrder);
+                                window.location.href = url.toString();
+                        });
+
+                        th.appendChild(btn);
+                        headerRow.appendChild(th);
+                });
+        }
+
+        parseSortFromURL();
+        setupSortableHeaders();
 
         // Create breadcrumb navigation from h1
         function createBreadcrumbs() {
