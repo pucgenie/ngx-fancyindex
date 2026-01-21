@@ -54,6 +54,7 @@ Sysoev](http://sysoev.ru).
 For Rocky Linux 9 and other EL9 distributions, you can build the module
 as a dynamic module against the system nginx package:
 
+```bash
     # Install nginx and development tools
     sudo dnf install -y nginx nginx-mod-devel gcc make pcre-devel zlib-devel
 
@@ -75,10 +76,13 @@ as a dynamic module against the system nginx package:
 
     # Install the module
     sudo cp objs/ngx_http_fancyindex_module.so /usr/lib64/nginx/modules/
+```
 
 Then load the module in `/etc/nginx/nginx.conf`:
 
+```bash
     load_module "modules/ngx_http_fancyindex_module.so";
+```
 
 ### CentOS 7/8, RHEL 7/8, Fedora Linux
 
@@ -90,12 +94,16 @@ fancyindex is included.
 
 Install repository configuration, then the module package:
 
-    yum -y install https://extras.getpagespeed.com/release-latest.rpm
-    yum -y install nginx-module-fancyindex
+```bash
+yum -y install https://extras.getpagespeed.com/release-latest.rpm
+yum -y install nginx-module-fancyindex
+```
 
 Then load the module in `/etc/nginx/nginx.conf` using:
 
+```bash
     load_module "modules/ngx_http_fancyindex_module.so";
+```
 
 ### macOS
 
@@ -103,7 +111,9 @@ Users can [install Nginx on macOS with
 MacPorts](https://ports.macports.org/port/nginx); fancyindex is
 included:
 
-    sudo port install nginx
+```bash
+sudo port install nginx
+```
 
 ### Other platforms
 
@@ -160,11 +170,13 @@ built into Nginx.
 The easiest way to get started is with the built-in theme, which
 includes search, sorting, light/dark mode toggle, and responsive design:
 
-    location / {
-      fancyindex on;              # Enable fancy indexes.
-      fancyindex_exact_size off;  # Output human-readable file sizes.
-      fancyindex_theme builtin;   # Use the built-in modern theme.
-    }
+```bash
+location / {
+  fancyindex on;              # Enable fancy indexes.
+  fancyindex_exact_size off;  # Output human-readable file sizes.
+  fancyindex_theme builtin;   # Use the built-in modern theme.
+}
+```
 
 The built-in theme serves all required CSS and JavaScript directly from
 the module - no external files or directories are needed.
@@ -173,10 +185,12 @@ the module - no external files or directories are needed.
 
 You can also use the default minimal built-in style:
 
-    location / {
-      fancyindex on;              # Enable fancy indexes.
-      fancyindex_exact_size off;  # Output human-readable file sizes.
-    }
+```bash
+location / {
+  fancyindex on;              # Enable fancy indexes.
+  fancyindex_exact_size off;  # Output human-readable file sizes.
+}
+```
 
 ### External Themes
 
