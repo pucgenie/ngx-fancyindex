@@ -53,7 +53,7 @@ html {
         --muted: #5e6877;                 /* secondary text */
         --row-hover: #eef1f8;             /* table row hover */
         --rule: #d7dde6;                  /* borders / rules */
-        --accent: #2d6cdf;                /* accent + links */
+        --accent: #1a4d8f;                /* accent + links (darker for better visibility) */
         --focus: 0 0 0 3px rgba(45, 108, 223, 0.25); /* focus ring shadow */
         --link: var(--accent);              /* primary link color */
         --clear-link: var(--muted);         /* subtle action links */
@@ -105,7 +105,7 @@ body.theme-dark {
 html {
         font-family: system-ui, -apple-system, 'Segoe UI', Ubuntu, Cantarell, 'Noto Sans', sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji';
         color: var(--muted);                                /* default text color (secondary) */
-        font-weight: 300;
+        font-weight: 400;
         font-size: clamp(14px, 1.2vw, 16px);                /* fluid base size */
         line-height: 1.6;                                   /* TO DO: 1.6x font height is "confortable", add toggle for condensed ~1.2*/
         text-size-adjust: 100%;
@@ -127,12 +127,12 @@ body {
    Headings and table headers
    ========================= */
 thead {
-        font-weight: 200;
+        font-weight: 400;
         font-size: 1.2em;
 }
 
 h1 {
-        font-weight: 300;
+        font-weight: 500;
         text-align: center;
         font-size: clamp(1.5rem, 2vw + 1rem, 2.4rem);
         line-height: 1.4;
@@ -156,6 +156,39 @@ h1 {
                 flex-direction: row;
                 justify-content: center;
         }
+}
+
+/* =========================
+   Top toolbar: title on left, controls on right
+   ========================= */
+.top-toolbar {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 0.5rem 1rem;
+        margin-bottom: 0.5rem;
+        gap: 1rem;
+}
+
+.toolbar-title {
+        font-size: 1.1rem;
+        font-weight: 500;
+        color: var(--fg);
+        white-space: nowrap;
+}
+
+.toolbar-controls {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+}
+
+.toolbar-search input {
+        width: clamp(8rem, 20vw, 16rem);
+        height: 2rem;
+        padding: 0 0.6rem;
+        font-size: 0.875rem;
+        margin: 0;
 }
 
 /* =========================
@@ -187,34 +220,42 @@ a.clear:hover {
 }
 
 /* =========================
-   Theme toggle button
+   Toolbar toggle buttons (theme + spacing)
    ========================= */
-.theme-toggle {
+.theme-toggle,
+.spacing-toggle {
         appearance: none;
-        border-radius: 999px;                               /* pill */
+        border-radius: 50%;
         border: 1px solid var(--toggle-border);
         background: var(--toggle-bg);
         color: var(--toggle-fg);
-        padding: 0.35rem 1.2rem;
-        font: 500 0.9rem/1.2 'Roboto', system-ui, sans-serif;
+        width: 2.25rem;
+        height: 2.25rem;
+        padding: 0;
+        font-size: 1.1rem;
+        line-height: 1;
         cursor: pointer;
         transition: background-color 150ms ease-in, transform 150ms ease-in;
         display: inline-flex;
         align-items: center;
-        gap: 0.45rem;                                       /* icon/text spacing */
+        justify-content: center;
 }
 
-.theme-toggle:hover {
+.theme-toggle:hover,
+.spacing-toggle:hover {
         background: var(--toggle-hover-bg);
+        transform: scale(1.05);
 }
 
-.theme-toggle:focus-visible {
+.theme-toggle:focus-visible,
+.spacing-toggle:focus-visible {
         outline: none;
-        box-shadow: var(--focus);                           /* tokenized focus ring */
+        box-shadow: var(--focus);
 }
 
-.theme-toggle[aria-pressed="true"] {
-        font-weight: 600;                                   /* pressed state emphasis */
+.theme-toggle:active,
+.spacing-toggle:active {
+        transform: scale(0.95);
 }
 
 /* =========================
@@ -230,7 +271,7 @@ input {
         background-color: var(--bg-elev);
         border: 1px solid var(--input-border);
         border-radius: 6px;
-        font: 300 0.95rem/1.2 'Roboto', system-ui, sans-serif;
+        font: 400 0.95rem/1.2 'Roboto', system-ui, sans-serif;
         transition: border-color 150ms ease-in, box-shadow 150ms ease-in;
 }
 input:focus-visible {
@@ -256,7 +297,7 @@ table {
         border-collapse: collapse;
         font-size: 0.95em;
         width: 100%;
-        margin: 24px 0 0;
+        margin: 12px 0 12px;
         background: var(--bg-elev);
         border-radius: 16px;
         overflow: hidden;
@@ -299,6 +340,49 @@ th + th {
 }
 th + th + th + th {
         width: 5%;                                          /* final column (e.g., size) narrow */
+}
+
+/* =========================
+   Sortable column headers
+   ========================= */
+.sort-header {
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+        background: none;
+        border: none;
+        padding: 0;
+        margin: 0;
+        font: inherit;
+        color: inherit;
+        text-transform: inherit;
+        letter-spacing: inherit;
+        cursor: pointer;
+        transition: color 150ms ease;
+}
+
+.sort-header:hover {
+        color: var(--accent);
+}
+
+.sort-header:focus {
+        outline: none;
+        box-shadow: var(--focus);
+        border-radius: 4px;
+}
+
+.sort-header.active {
+        color: var(--accent);
+}
+
+.sort-arrow {
+        font-weight: bold;
+        font-size: 1.1em;
+}
+
+body.theme-dark .sort-header:hover,
+body.theme-dark .sort-header.active {
+        color: var(--link);
 }
 
 td {
@@ -480,8 +564,8 @@ footer a {
    Breadcrumb navigation
    ========================= */
 .breadcrumb-nav {
-        margin: 1rem 0 1.5rem;
-        padding: 0.75rem 1rem;
+        margin: 0.5rem 0 0.5rem;
+        padding: 0.25rem 1rem;
         background: var(--bg-elev);
         border-radius: 8px;
         border: 1px solid var(--rule);
@@ -564,8 +648,12 @@ footer a {
         flex-direction: column;
         align-items: center;
         gap: 1rem;
-        margin: 2rem 0;
-        padding: 1rem;
+        margin: 0rem 0;
+        padding: 0.25rem 0rem 0.25rem;
+}
+
+.pagination-top {
+        margin-top: 0;
 }
 
 .pagination-info {
@@ -735,4 +823,34 @@ footer a {
                 margin-left: 0;
                 margin-top: 0.5rem;
         }
+}
+
+/* =========================
+   Line spacing modes
+   ========================= */
+body.spacing-compact td {
+        padding-top: 6px;
+        padding-bottom: 6px;
+}
+
+body.spacing-compact {
+        line-height: 1.3;
+}
+
+body.spacing-normal td {
+        padding-top: 14px;
+        padding-bottom: 14px;
+}
+
+body.spacing-normal {
+        line-height: 1.6;
+}
+
+body.spacing-comfortable td {
+        padding-top: 22px;
+        padding-bottom: 22px;
+}
+
+body.spacing-comfortable {
+        line-height: 1.9;
 }

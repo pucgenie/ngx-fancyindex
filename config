@@ -5,7 +5,7 @@ if [ "$ngx_module_link" = DYNAMIC ] ; then
     ngx_module_type=HTTP
     ngx_module_name=ngx_http_fancyindex_module
     ngx_module_srcs="$ngx_addon_dir/ngx_http_fancyindex_module.c"
-    ngx_module_deps="$ngx_addon_dir/template.h"
+    ngx_module_deps="$ngx_addon_dir/template.h $ngx_addon_dir/theme_builtin.h"
     ngx_module_order="$ngx_module_name ngx_http_autoindex_module"
     . auto/module
 else
@@ -14,6 +14,7 @@ else
     HTTP_MODULES=`echo "${HTTP_MODULES}" | sed -e \
 	's/ngx_http_index_module/ngx_http_fancyindex_module ngx_http_index_module/'`
     NGX_ADDON_SRCS="$NGX_ADDON_SRCS $ngx_addon_dir/ngx_http_fancyindex_module.c"
+    NGX_ADDON_DEPS="$NGX_ADDON_DEPS $ngx_addon_dir/template.h $ngx_addon_dir/theme_builtin.h"
     if [ $HTTP_ADDITION != YES ] ; then
         echo " - The 'addition' filter is needed for fancyindex_{header,footer}, but it was disabled"
     fi

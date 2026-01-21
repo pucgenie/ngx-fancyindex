@@ -1,0 +1,37 @@
+#! /bin/bash
+#
+# 20-builtin-theme.test - Test built-in theme functionality
+#
+
+# Start nginx with builtin theme enabled
+nginx_start 'fancyindex_theme builtin;'
+
+# Test 1: Directory listing should include theme header/footer
+html=$(fetch /)
+if [[ "$html" != *"/_nfi_theme/styles.css"* ]]; then
+    fail 'Directory listing does not include reference to theme CSS\n'
+fi
+
+if [[ "$html" != *"/_nfi_theme/fancyindex.js"* ]]; then
+    fail 'Directory listing does not include reference to theme JavaScript\n'
+fi
+
+# Test 2: Theme CSS should be served correctly
+css=$(fetch /_nfi_theme/styles.css)
+if [[ "$css" != *"box-sizing"* ]]; then
+    fail 'Theme CSS was not served correctly\n'
+fi
+
+# Test 3: Theme JavaScript should be served correctly
+js=$(fetch /_nfi_theme/fancyindex.js)
+if [[ "$js" != *"THEME_STORAGE_KEY"* ]]; then
+    fail 'Theme JavaScript was not served correctly\n'
+fi
+
+# Test 4: Non-existent theme asset should return 404
+response=$(fetch --with-headers /_nfi_theme/nonexistent.css 2>&1)
+if [[ "$response" != *"404"* ]]; then
+    fail 'Non-existent theme asset did not return 404\n'
+fi
+
+nginx_stop
