@@ -9,6 +9,7 @@
         'use strict';
 
         const THEME_STORAGE_KEY = 'fancyindex-theme';
+        const SPACING_STORAGE_KEY = 'fancyindex-spacing';
         const ITEMS_PER_PAGE = 100;
 
         // Service Worker disabled for built-in theme (assets served from module)
@@ -16,7 +17,6 @@
         const form = document.createElement('form');
         const input = document.createElement('input');
         const heading = document.querySelector('h1');
-        const controls = document.createElement('div');
         const themeToggle = document.createElement('button');
         const body = document.body;
         const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
@@ -111,14 +111,95 @@
                 });
         }
 
+        // Create top toolbar for search, spacing, and theme toggles
+        const toolbar = document.createElement('div');
+        toolbar.className = 'top-toolbar';
+
+        // Title on left side
+        const toolbarTitle = document.createElement('span');
+        toolbarTitle.className = 'toolbar-title';
+        toolbarTitle.textContent = 'Nginx Static File Server';
+        toolbar.appendChild(toolbarTitle);
+
+        // Right side controls container
+        const toolbarControls = document.createElement('div');
+        toolbarControls.className = 'toolbar-controls';
+
+        // Search input (added to toolbar controls)
+        input.name = 'filter';
+        input.id = 'search';
+        input.type = 'search';
+        input.placeholder = 'Search...';
+        input.setAttribute('aria-label', 'Search directory');
+        form.className = 'toolbar-search';
+        form.appendChild(input);
+        toolbarControls.appendChild(form);
+
+        // Line spacing toggle
+        const spacingToggle = document.createElement('button');
+        spacingToggle.type = 'button';
+        spacingToggle.className = 'spacing-toggle';
+        spacingToggle.setAttribute('aria-label', 'Change line spacing');
+
+        const spacingOptions = ['compact', 'normal', 'comfortable'];
+        const spacingIcons = { compact: '≡', normal: '☰', comfortable: '═' };
+        const spacingLabels = { compact: 'Compact spacing', normal: 'Normal spacing', comfortable: 'Comfortable spacing' };
+        let currentSpacingIndex = 1; // Default to normal
+
+        function updateSpacingButton() {
+                const spacing = spacingOptions[currentSpacingIndex];
+                spacingToggle.innerHTML = spacingIcons[spacing];
+                spacingToggle.title = spacingLabels[spacing];
+                spacingToggle.setAttribute('data-spacing', spacing);
+        }
+
+        function applySpacing(spacing) {
+                body.classList.remove('spacing-compact', 'spacing-normal', 'spacing-comfortable');
+                body.classList.add(`spacing-${spacing}`);
+        }
+
+        function getStoredSpacing() {
+                try {
+                        return localStorage.getItem(SPACING_STORAGE_KEY) || 'normal';
+                } catch (error) {
+                        return 'normal';
+                }
+        }
+
+        function storeSpacing(spacing) {
+                try {
+                        localStorage.setItem(SPACING_STORAGE_KEY, spacing);
+                } catch (error) {
+                        // Storage not available
+                }
+        }
+
+        spacingToggle.addEventListener('click', () => {
+                currentSpacingIndex = (currentSpacingIndex + 1) % 3;
+                const spacing = spacingOptions[currentSpacingIndex];
+                storeSpacing(spacing);
+                applySpacing(spacing);
+                updateSpacingButton();
+        });
+
+        // Initialize spacing
+        const storedSpacing = getStoredSpacing();
+        currentSpacingIndex = spacingOptions.indexOf(storedSpacing);
+        if (currentSpacingIndex === -1) currentSpacingIndex = 1;
+        applySpacing(storedSpacing);
+        updateSpacingButton();
+
+        toolbarControls.appendChild(spacingToggle);
+
+        
         parseSortFromURL();
         setupSortableHeaders();
-
+        
         // Create breadcrumb navigation from h1
         function createBreadcrumbs() {
                 if (!heading) return;
 
-                const pathText = heading.textContent.replace('Directory:', '').trim();
+                const pathText = heading.textContent.trim();
                 if (!pathText || pathText === '/') return;
 
                 const breadcrumbNav = document.createElement('nav');
@@ -131,11 +212,11 @@
                 const breadcrumbList = document.createElement('ol');
                 breadcrumbList.className = 'breadcrumb';
 
-                // Add root
+                // Add root (using hostname)
                 const rootLi = document.createElement('li');
                 const rootLink = document.createElement('a');
                 rootLink.href = '/';
-                rootLink.textContent = 'Root';
+                rootLink.textContent = window.location.hostname;
                 rootLi.appendChild(rootLink);
                 breadcrumbList.appendChild(rootLi);
 
@@ -202,26 +283,26 @@
                 });
 
                 breadcrumbNav.appendChild(copyBtn);
-                heading.textContent = 'Directory';
+                heading.style.display = 'none';
                 heading.after(breadcrumbNav);
         }
 
         createBreadcrumbs();
 
-        controls.className = 'directory-controls';
-
-        // Theme toggle with Auto/Light/Dark modes
+        // Theme toggle with Auto/Light/Dark modes (icon-based)
         themeToggle.type = 'button';
         themeToggle.className = 'theme-toggle';
         themeToggle.setAttribute('aria-label', 'Change theme');
 
         const themeOptions = ['auto', 'light', 'dark'];
+        const themeIcons = { auto: '◐', light: '☀', dark: '☾' };
+        const themeLabels = { auto: 'Auto theme', light: 'Light theme', dark: 'Dark theme' };
         let currentThemeIndex = 0;
 
         function updateThemeButton() {
                 const theme = themeOptions[currentThemeIndex];
-                const labels = { auto: 'Auto', light: 'Light', dark: 'Dark' };
-                themeToggle.textContent = labels[theme];
+                themeToggle.innerHTML = themeIcons[theme];
+                themeToggle.title = themeLabels[theme];
                 themeToggle.setAttribute('data-theme', theme);
         }
 
@@ -233,22 +314,11 @@
                 updateThemeButton();
         });
 
-        controls.appendChild(themeToggle);
+        toolbarControls.appendChild(themeToggle);
+        toolbar.appendChild(toolbarControls);
 
-        // Search input
-        input.name = 'filter';
-        input.id = 'search';
-        input.type = 'search';
-        input.placeholder = 'Type to search...';
-        input.setAttribute('aria-label', 'Search directory');
-        form.appendChild(input);
-        controls.appendChild(form);
-
-        if (heading?.parentNode) {
-                heading.after(controls);
-        } else {
-                document.body.insertBefore(controls, document.body.firstChild);
-        }
+        // Insert toolbar at top of body
+        document.body.insertBefore(toolbar, document.body.firstChild);
 
         const listItems = tbody ? Array.from(tbody.querySelectorAll('tr')) : [];
         let filteredItems = [...listItems];
@@ -371,16 +441,22 @@
                         }
                 });
 
-                // Update pagination
-                const existingPagination = table?.parentNode.querySelector('.pagination');
-                if (existingPagination) {
-                        existingPagination.remove();
-                }
+                // Remove existing pagination (both top and bottom)
+                const existingPaginations = table?.parentNode.querySelectorAll('.pagination');
+                existingPaginations?.forEach(p => p.remove());
 
                 if (filteredItems.length > ITEMS_PER_PAGE) {
-                        const pagination = createPagination();
-                        if (pagination && table) {
-                                table.after(pagination);
+                        // Add pagination at top (before table)
+                        const topPagination = createPagination();
+                        if (topPagination && table) {
+                                topPagination.classList.add('pagination-top');
+                                table.before(topPagination);
+                        }
+
+                        // Add pagination at bottom (after table)
+                        const bottomPagination = createPagination();
+                        if (bottomPagination && table) {
+                                table.after(bottomPagination);
                         }
                 }
 
