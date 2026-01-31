@@ -23,6 +23,7 @@ Sysoev](http://sysoev.ru).
 - [Nginx Fancy Index module](#nginx-fancy-index-module)
   - [Requirements](#requirements)
     - [Rocky Linux 9 / RHEL 9 / AlmaLinux 9](#rocky-linux-9--rhel-9--almalinux-9)
+      - [Debugging Nginx Issues](#debugging-nginx-issues)
     - [CentOS 7/8, RHEL 7/8, Fedora Linux](#centos-78-rhel-78-fedora-linux)
     - [macOS](#macos)
     - [Other platforms](#other-platforms)
@@ -55,33 +56,60 @@ For Rocky Linux 9 and other EL9 distributions, you can build the module
 as a dynamic module against the system nginx package:
 
 ```bash
-    # Install nginx and development tools
-    sudo dnf install -y nginx nginx-mod-devel gcc make pcre-devel zlib-devel
+# Install nginx and development tools
+sudo dnf install -y nginx nginx-mod-devel gcc make pcre-devel zlib-devel
 
-    # Clone the source
-    git clone https://github.com/aperezdc/ngx-fancyindex.git
-    cd ngx-fancyindex
+# Clone the source
+git clone https://github.com/aperezdc/ngx-fancyindex.git
+cd ngx-fancyindex
 
-    # Generate the embedded theme (if not already present)
-    bash generate_theme.sh
+# Generate the embedded theme (if not already present)
+bash generate_theme.sh
 
-    # Find nginx source directory (installed by nginx-mod-devel)
-    # Typically at /usr/src/nginx-<version>
-    NGINX_SRC=$(ls -d /usr/src/nginx-* 2>/dev/null | head -1)
+# Find nginx source directory (installed by nginx-mod-devel)
+# Typically at /usr/src/nginx-<version>
+NGINX_SRC=$(ls -d /usr/src/nginx-* 2>/dev/null | head -1)
 
-    # Configure and build the dynamic module
-    cd "$NGINX_SRC"
-    ./configure --with-compat --add-dynamic-module=/path/to/ngx-fancyindex
-    make modules
+# Configure and build the dynamic module
+cd "$NGINX_SRC"
+./configure --with-compat --add-dynamic-module=/path/to/ngx-fancyindex
+make modules
 
-    # Install the module
-    sudo cp objs/ngx_http_fancyindex_module.so /usr/lib64/nginx/modules/
+# Install the module
+sudo cp objs/ngx_http_fancyindex_module.so /usr/lib64/nginx/modules/
 ```
 
-Then load the module in `/etc/nginx/nginx.conf`:
+Then load the module in `/etc/nginx/nginx.conf`. It's placement should precede the http block and events block, if applicable:
 
 ```bash
-    load_module "modules/ngx_http_fancyindex_module.so";
+load_module "modules/ngx_http_fancyindex_module.so";
+```
+
+#### Debugging Nginx Issues
+
+Without loading the nginx module, I encountered this error when running `nginx -t`
+
+```bash
+nginx: [emerg] unknown directive "fancyindex_theme" in /etc/nginx/nginx.conf:96
+nginx: configuration file /etc/nginx/nginx.conf test failed
+```
+
+If the nginx module directive is specified in the wrong place, this error may appear:
+
+```bash
+nginx: [emerg] "load_module" directive is specified too late in /etc/nginx/nginx.conf:13
+nginx: configuration file /etc/nginx/nginx.conf test failed
+```
+
+The nginx install path may vary based on the installation configuration.
+
+```bash
+nginx: [emerg] dlopen() "/usr/share/nginx/modules/ngx_http_fancyindex_module.so" failed (/usr/share/nginx/modules/ngx_http_fancyindex_module.so: cannot open shared object file: No such file or directory) in /etc/nginx/nginx.conf:6
+```
+
+```diff
+-sudo cp objs/ngx_http_fancyindex_module.so /usr/lib64/nginx/modules/
++sudo cp objs/ngx_http_fancyindex_module.so /usr/share/nginx/modules/
 ```
 
 ### CentOS 7/8, RHEL 7/8, Fedora Linux
