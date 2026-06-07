@@ -324,7 +324,7 @@ Syntax
 *fancyindex_exact_size* \[*on* \| *off*\]
 
 Default  
-fancyindex_exact_size on
+fancyindex_exact_size off
 
 Context  
 http, server, location

@@ -930,7 +930,7 @@ make_content_buf(
             + entry[i].name.len + entry[i].utf_len + entry[i].escape_html
             + ngx_sizeof_ssz("\">")
             + entry[i].name.len + entry[i].utf_len + entry[i].escape_html
-            + ngx_sizeof_ssz("</a></td><td class=\"size\">")
+            + ngx_sizeof_ssz("</a></td></tr><tr><td class=\"size\">")
             + 20 /* File size */
             + ngx_sizeof_ssz("</td><td class=\"date\">")    /* Date prefix */
             + ngx_sizeof_ssz("</td></tr>\n") /* Date suffix */
@@ -1092,8 +1092,6 @@ make_content_buf(
         }
         b->last = ngx_cpymem_ssz(b->last,
                                  "\">Parent directory/</a></td>"
-                                 "<td class=\"size\">-</td>"
-                                 "<td class=\"date\">-</td>"
                                  "</tr>"
                                  CRLF);
     }
@@ -1138,7 +1136,7 @@ make_content_buf(
             len++;
         }
 
-        b->last = ngx_cpymem_ssz(b->last, "</a></td><td class=\"size\">");
+        b->last = ngx_cpymem_ssz(b->last, "</a></td></tr><tr><td class=\"size\">");
 
         if (alcf->exact_size) {
             if (entry[i].dir) {
@@ -1640,7 +1638,7 @@ ngx_http_fancyindex_merge_loc_conf(ngx_conf_t *cf, void *parent, void *child)
     ngx_conf_merge_value(conf->case_sensitive, prev->case_sensitive, 1);
     ngx_conf_merge_value(conf->dirs_first, prev->dirs_first, 1);
     ngx_conf_merge_value(conf->localtime, prev->localtime, 0);
-    ngx_conf_merge_value(conf->exact_size, prev->exact_size, 1);
+    ngx_conf_merge_value(conf->exact_size, prev->exact_size, 0);
     ngx_conf_merge_value(conf->show_path, prev->show_path, 1);
     ngx_conf_merge_value(conf->show_dot_files, prev->show_dot_files, 0);
 
